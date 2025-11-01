@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "<connection string>",
+    "FORM_ENDPOINT": "https://eastus.api.cognitive.microsoft.com/",
+    "FORM_KEY": "44140c1222b64db6b00cb72adbfc9752",
+    "TEXT_ENDPOINT": "https://eastus.api.cognitive.microsoft.com/",
+    "TEXT_KEY": "44140c1222b64db6b00cb72adbfc9752",
+    "COSMOS_DB_ENDPOINT": "https://resume-anaylzerdb.documents.azure.com:443/",
+    "COSMOS_DB_KEY": "<cosmosdb key>",
+    "COSMOS_DB_DATABASE": "resumesdb",
+    "COSMOS_DB_CONTAINER": "resumesdata"
+  },
+  "ConnectionStrings": {},
+  "Host": {}
+}
