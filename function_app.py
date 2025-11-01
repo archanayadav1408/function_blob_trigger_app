@@ -63,7 +63,6 @@ def analyze_document(blob_url):
     text_content = " ".join([p.content for p in result.paragraphs])
     return text_content
 
-
 def extract_entities(text):
     """Extract entities (skills, organizations, dates, people, etc.) from text."""
     response = text_client.recognize_entities([text])[0]
@@ -82,8 +81,30 @@ def extract_entities(text):
 
     return person_name, entities
 
+def extract_key_phrases(text):
+    resp = text_client.extract_key_phrases([text])
+    return resp[0].key_phrases if not resp[0].is_error else []
 
-def store_in_cosmos(person_name, entities, blob_name):
+def extract_summary(text):
+    try:
+        # Start the summarization job and wait for completion
+        poller = text_client.begin_abstract_summary([text])
+        result = poller.result()  # <-- this waits for completion internally
+        summary_text = ""
+        # Loop through results
+        for doc in result:
+            if not doc.is_error:
+                for summary in doc.summaries:
+                    summary_text += summary.text.strip() + " "
+            else:
+                raise Exception(f"Error in summary: {doc.error.code} - {doc.error.message}")
+        return summary_text.strip()
+    except Exception as e:
+        print(f"Error in extract_summary: {e}")
+        return ""
+
+
+def store_in_cosmos(person_name, entities, blob_name, key_phrases, summary):
     """Store extracted info in Cosmos DB (auto-generated ID)."""
     client = CosmosClient(COSMOS_ENDPOINT, COSMOS_KEY)
     database = client.create_database_if_not_exists(id=COSMOS_DB)
@@ -96,7 +117,9 @@ def store_in_cosmos(person_name, entities, blob_name):
     doc = {
         "id":guid,
         "fileName": blob_name,
+        "summary": summary,
         "name": person_name,
+        "key_phrases": key_phrases,
         "entities": entities,
         "uploadTime": datetime.datetime.utcnow().isoformat()
     }
@@ -118,10 +141,12 @@ def BlobTrigger(myblob: func.InputStream):
 
     # Step 2: Extract entities & auto-detect person name
     person_name, entities = extract_entities(text_content)
-    logging.info(f"👤 Detected person: {person_name}")
+    key_phrases = extract_key_phrases(text_content)
+    summary = extract_summary(text_content)
+    logging.info(str(key_phrases))
 
     # Step 3: Store results in Cosmos DB
-    store_in_cosmos(person_name, entities, blob_name)
+    store_in_cosmos(person_name, entities, blob_name,key_phrases, summary)
 
 
 @app.route(route="GetResumeInsights", auth_level=func.AuthLevel.ANONYMOUS)
@@ -155,6 +180,8 @@ def GetResumeInsights(req: func.HttpRequest) -> func.HttpResponse:
             )
         doc = items[0]
         name = doc.get("name", "Unknown")
+        summary = doc.get("summary", "Unknown")
+        key_phrases = doc.get("key_phrases", "Unknown")
         entities = doc.get("entities", [])
 
         # Format into meaningful text
@@ -163,9 +190,11 @@ def GetResumeInsights(req: func.HttpRequest) -> func.HttpResponse:
         date_entities = [e['text'] for e in entities if e['category'] == 'DateTime']
         result = {
             "Name": name,
+            "Summary": summary,
             "Skills": skill_entities,
             "Organizations": org_entities,
-            "Dates": date_entities
+            "Dates": date_entities,
+            "Key Phrases":key_phrases
         }
 
         return func.HttpResponse(
@@ -173,7 +202,6 @@ def GetResumeInsights(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
             status_code=200
         )
-        return func.HttpResponse(f"Hello, {filename}. This HTTP triggered function executed successfully.")
     else:
         if not filename:
             return func.HttpResponse(
