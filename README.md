@@ -676,7 +676,203 @@ App URL: https://resumeanalyzerfunc.azurewebsites.net
 
 ---
 
-## 🧠 9. Common Issues
+# 📘 API Documentation
+
+## **Overview**
+
+This API suite automates the extraction of insights from uploaded resumes using **Azure Cognitive Services** (Form Recognizer + Text Analytics), **Azure Blob Storage**, and **Cosmos DB**.
+There are **three major functions** (APIs):
+
+| Function Name       | Trigger Type        | Purpose                                              |
+| ------------------- | ------------------- | ---------------------------------------------------- |
+| `upload_resume`     | HTTP Trigger (POST) | Uploads a resume to Blob Storage                     |
+| `BlobTrigger`       | Blob Trigger        | Processes uploaded resumes and stores extracted data |
+| `GetResumeInsights` | HTTP Trigger (GET)  | Fetches processed insights from Cosmos DB            |
+
+---
+
+## 🔹 **1. Upload Resume API**
+
+### **Endpoint**
+
+```
+POST /api/uploadresume
+```
+
+### **Purpose**
+
+Uploads a PDF resume to the Azure Blob Storage container `resumes`.
+Once uploaded, the **Blob Trigger** automatically processes the file and extracts insights.
+
+### **Headers**
+
+| Key          | Value               |
+| ------------ | ------------------- |
+| Content-Type | multipart/form-data |
+
+### **Request Payload**
+
+**Form Data:**
+
+| Field  | Type        | Required | Description           |
+| ------ | ----------- | -------- | --------------------- |
+| `file` | File (.pdf) | ✅        | Resume file to upload |
+
+### **Example CURL Command**
+
+```bash
+curl -X POST "http://localhost:7071/api/uploadresume" \
+  -F "file=@Ashish_Jha_Developer.pdf"
+```
+
+### **Response (Success)**
+
+```text
+File uploaded successfully!
+```
+
+### **Response (Failure)**
+
+```text
+Error: Invalid file type or upload failure.
+```
+
+---
+
+## 🔹 **2. Blob Trigger (Automatic Processing)**
+
+### **Trigger Type**
+
+`Blob Trigger`
+
+### **Trigger Path**
+
+```
+resumes/{name}
+```
+
+### **Purpose**
+
+Automatically triggers when a new file is uploaded to the container `resumes`.
+
+### **Processing Steps**
+
+1. Generates a **SAS URL** for the uploaded blob.
+2. Sends the blob to **Form Recognizer** (`prebuilt-document` model) to extract raw text.
+3. Uses **Text Analytics** APIs to extract:
+
+   * Named entities (skills, organizations, dates, etc.)
+   * Key phrases
+   * Summary text
+4. Stores extracted data in **Cosmos DB** in the following format:
+
+### **Document Schema (Cosmos DB)**
+
+```json
+{
+  "id": "3f1c8b21-99ef-4db1-845f-89a0ad9f1e1d",
+  "fileName": "Ashish_Jha_Developer.pdf",
+  "summary": "Experienced Azure Developer with 3 years in cloud automation...",
+  "name": "Ashish Jha",
+  "key_phrases": ["Azure", "Python", "Microservices", "Cloud Security"],
+  "entities": [
+    {"text": "Microsoft", "category": "Organization"},
+    {"text": "Python", "category": "Skill"}
+  ],
+  "uploadTime": "2025-11-01T17:00:00Z"
+}
+```
+
+---
+
+## 🔹 **3. Get Resume Insights API**
+
+### **Endpoint**
+
+```
+GET /api/GetResumeInsights?filename={resume_file_name}
+```
+
+### **Purpose**
+
+Retrieves the processed insights (summary, entities, skills, etc.) for the given uploaded resume from **Cosmos DB**.
+
+### **Query Parameters**
+
+| Parameter  | Required | Description                                                     |
+| ---------- | -------- | --------------------------------------------------------------- |
+| `filename` | ✅        | Name of the uploaded resume file (must exactly match file name) |
+
+### **Example CURL Command**
+
+```bash
+curl "http://localhost:7071/api/GetResumeInsights?filename=Ashish_Jha_Developer.pdf"
+```
+
+### **Example Response**
+
+```json
+{
+  "Name": "Ashish Jha",
+  "Summary": "Experienced Azure developer skilled in microservices, cloud automation, and AI integration.",
+  "Skills": ["Azure", "Python", "AI", "Cloud"],
+  "Organizations": ["Microsoft", "Tech Mahindra"],
+  "Dates": ["2021", "2023"],
+  "Key Phrases": ["Cloud Development", "AI-powered solutions", "Azure automation"]
+}
+```
+
+### **Response Codes**
+
+| Status Code | Description                   |
+| ----------- | ----------------------------- |
+| 200         | Success — data retrieved      |
+| 404         | Resume not found in Cosmos DB |
+| 400         | Missing filename parameter    |
+
+---
+
+## 🧩 **Supporting Functions**
+
+### **Helper Function: `generate_sas_url(container_name, blob_name)`**
+
+Generates a **15-minute temporary SAS URL** for Form Recognizer to read the uploaded blob.
+
+### **Helper Function: `analyze_document(blob_url)`**
+
+Uses **Form Recognizer** (`prebuilt-document`) to extract text and structure from the resume.
+
+### **Helper Function: `extract_entities(text)`**
+
+Extracts named entities (like Person, Skill, Organization) using **Text Analytics**.
+
+### **Helper Function: `extract_summary(text)`**
+
+Generates an abstract summary using **Azure Language Service** summarization feature.
+
+### **Helper Function: `store_in_cosmos(...)`**
+
+Persists extracted resume insights into **Cosmos DB**.
+
+---
+
+## ⚙️ **Environment Variables**
+
+| Variable              | Description                        |
+| --------------------- | ---------------------------------- |
+| `FORM_ENDPOINT`       | Endpoint for Azure Form Recognizer |
+| `FORM_KEY`            | Key for Azure Form Recognizer      |
+| `TEXT_ENDPOINT`       | Endpoint for Text Analytics        |
+| `TEXT_KEY`            | Key for Text Analytics             |
+| `COSMOS_DB_ENDPOINT`  | Cosmos DB endpoint URL             |
+| `COSMOS_DB_KEY`       | Cosmos DB primary key              |
+| `COSMOS_DB_DATABASE`  | Cosmos DB database name            |
+| `COSMOS_DB_CONTAINER` | Cosmos DB container name           |
+| `AzureWebJobsStorage` | Connection string for Blob Storage |
+
+---
+
+# 🧠 **Common Issues**
 
 | Error                               | Fix                                                              |
 | ----------------------------------- | ---------------------------------------------------------------- |
@@ -688,4 +884,38 @@ App URL: https://resumeanalyzerfunc.azurewebsites.net
 
 ---
 
+# **Tools and Technologies Used**
 
+| Tool / Service                                     | Purpose                                                                |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Azure Function App**                             | Serverless compute platform to host and run lightweight backend logic. |
+| **Azure Blob Storage**                             | Stores uploaded resumes (PDF files).                                   |
+| **Azure Cognitive Services (Language Service)**    | Extracts and summarizes text from resumes.                             |
+| **Python (Function App runtime)**                  | Core language for writing business logic.                              |
+| **Visual Studio Code + Azure Functions Extension** | Local development and debugging of the function app.                   |
+| **Postman / Curl**                                 | For testing APIs locally.                                              |
+| **Azure CLI**                                      | For setting up function app and resource connections.                  |
+
+---
+
+# **Challenges Faced**
+
+| Challenge                               | Description                                               | Resolution                                                                |
+| --------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **File Type Validation**                | Need to ensure only `.pdf` files are uploaded.            | Added validation logic in the function; throw HTTP 400 error for non-PDF. |
+| **Malformed URL errors**                | Issues with filenames containing spaces.                  | Used URL encoding (`%20`) or quotes around filenames.                     |
+| **Azure Cognitive Services API errors** | Encountered `name 'ExtractSummaryAction' is not defined`. | Installed correct SDK version and imported from `azure.ai.textanalytics`. |
+| **Authentication setup**                | Needed Cognitive Service endpoint and key.                | Stored them in local.settings.json for local dev.                         |
+
+
+
+---
+
+# **Future Enhancements**
+
+* To provide more query option on resumes , more filters on name, time , skills.
+* Store analysis results in **Cosmos DB** for querying and analytics.
+* Build a **frontend (React/Azure Static Web App)** for user interaction.
+
+
+---
