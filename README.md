@@ -479,3 +479,213 @@ Here’s how the triggers work together in your app:
 
 ---
 
+
+Perfect ✅ — here’s a **step-by-step guide with commands** to **set up, run, and test your Azure Function App locally**, including all dependencies and environment variables for your Resume Analyzer project.
+
+---
+
+# 🧠 Setup 
+
+---
+
+## ⚙️ Prerequisites
+
+Make sure you have the following installed:
+
+| Tool                               | Version             | Install Command                                                  |
+| ---------------------------------- | ------------------- | ---------------------------------------------------------------- |
+| **Python**                         | 3.12+               | [Download](https://www.python.org/downloads/)                    |
+| **Azure Functions Core Tools**     | v4                  | `npm install -g azure-functions-core-tools@4 --unsafe-perm true` |
+| **Azure CLI**                      | Latest              | [Download](https://aka.ms/installazurecliwindows)                |
+| **VS Code**                        | (Recommended)       | [Download](https://code.visualstudio.com/)                       |
+| **Azure Extension Pack (VS Code)** | Optional but useful | From VS Code Extensions panel                                    |
+
+---
+
+## 📦 1. Clone the Project
+
+```bash
+git clone https://github.com/<your-repo>/function_blob_trigger_app.git
+cd function_blob_trigger_app
+```
+
+---
+
+## 🧰 2. Create and Activate a Virtual Environment
+
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate (Windows)
+.venv\Scripts\activate
+
+# Activate (macOS/Linux)
+source .venv/bin/activate
+```
+
+---
+
+## 📚 3. Install Required Packages
+
+```bash
+pip install -r requirements.txt
+```
+
+If you don’t have a `requirements.txt`, create one with:
+
+```bash
+azure-functions
+azure-ai-formrecognizer
+azure-ai-textanalytics
+azure-storage-blob
+azure-core
+azure-cosmos
+```
+
+Then install:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🔐 4. Set Up Local Environment Variables
+
+Create a file named **`local.settings.json`** in the root of your project (if not already present):
+
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "<your-storage-connection-string>",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "FORM_ENDPOINT": "<your-form-recognizer-endpoint>",
+    "FORM_KEY": "<your-form-recognizer-key>",
+    "TEXT_ENDPOINT": "<your-text-analytics-endpoint>",
+    "TEXT_KEY": "<your-text-analytics-key>",
+    "COSMOS_DB_ENDPOINT": "<your-cosmos-endpoint>",
+    "COSMOS_DB_KEY": "<your-cosmos-key>",
+    "COSMOS_DB_DATABASE": "ResumeAnalyzer",
+    "COSMOS_DB_CONTAINER": "ResumeData"
+  }
+}
+```
+
+You can get these values from the **Azure Portal** under:
+
+* **Storage Account → Access keys**
+* **Cognitive Services → Keys and Endpoint**
+* **Cosmos DB → Keys and Connection String**
+
+---
+
+## 🧩 5. Initialize Azure Function Project (if not already initialized)
+
+If you’re starting fresh:
+
+```bash
+func init . --python
+```
+
+Then add your function:
+
+```bash
+func new --name BlobTrigger --template "Blob trigger"
+func new --name GetResumeInsights --template "HTTP trigger"
+func new --name uploadresume --template "HTTP trigger"
+```
+
+*(You already have these defined, so you can skip if code exists.)*
+
+---
+
+## ▶️ 6. Run the Function App Locally
+
+Start your function runtime:
+
+```bash
+func start
+```
+
+If everything is configured correctly, you’ll see output like:
+
+```
+Found Python version 3.12.10
+Functions:
+    BlobTrigger: blobTrigger
+    GetResumeInsights: [GET] http://localhost:7071/api/GetResumeInsights
+    uploadresume: [POST] http://localhost:7071/api/uploadresume
+```
+
+---
+
+## 🧪 7. Test the APIs Locally
+
+### ✅ Upload a Resume (HTTP Trigger)
+
+```bash
+curl.exe -X POST "http://localhost:7071/api/uploadresume" `
+     -F "file=@C:\Users\archanayadav\Documents\Latest_Archana_s_Resume.pdf" -v
+```
+
+After uploading, you’ll see your blob trigger automatically start processing.
+
+### ✅ Get Resume Insights (HTTP Trigger)
+
+```bash
+curl.exe "http://localhost:7071/api/GetResumeInsights?filename=Latest_Archana_s_Resume.pdf" -v
+```
+
+Expected Output (JSON):
+
+```json
+{
+  "Name": "Archana Yadav",
+  "Skills": ["Python", "Azure", "Data Engineering"],
+  "Organizations": ["Microsoft"],
+  "Dates": ["2023", "2024"],
+  "Summary": "Experienced engineer skilled in Azure and data ingestion services."
+}
+```
+
+---
+
+## ☁️ 8. Deploy to Azure
+
+Once everything works locally:
+
+```bash
+# Login to Azure
+az login
+
+# Set your subscription
+az account set --subscription "<your-subscription-id>"
+
+# Deploy
+func azure functionapp publish resumeanalyzerfunc
+```
+
+You’ll see:
+
+```
+Deployment successful.
+App URL: https://resumeanalyzerfunc.azurewebsites.net
+```
+
+---
+
+## 🧠 9. Common Issues
+
+| Error                               | Fix                                                              |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `ModuleNotFoundError`               | Check `requirements.txt` and reinstall dependencies              |
+| `Storage connection string invalid` | Regenerate keys from Azure Portal                                |
+| `503 Site Unavailable`              | Restart your Function App from Azure Portal                      |
+| `NameError: json not defined`       | Add `import json` at the top of your function                    |
+| `Access Denied (Blob)`              | Ensure SAS tokens are generated properly with `read` permissions |
+
+---
+
+
