@@ -101,6 +101,44 @@ az functionapp create \
   --linux-fx-version "Python|3.12"
 ```
 
+### 8.Deply Cosmosdb account
+```bash
+az cosmosdb create \
+  --name resume-anaylzerdb \
+  --resource-group ResumeAnalyser-rg \
+  --kind GlobalDocumentDB \
+  --locations regionName="West US 2" failoverPriority=0 isZoneRedundant=false \
+  --default-consistency-level Session \
+  --enable-automatic-failover true \
+  --enable-multiple-write-locations false \
+  --capabilities EnableServerless \
+  --backup-policy-type Periodic \
+  --backup-interval 240 \
+  --backup-retention 8 \
+  --backup-storage-redundancy Geo \
+  --public-network-access Enabled \
+  --enable-free-tier false \
+  --tags "defaultExperience=Core (SQL)" "hidden-workload-type=Development/Testing" \
+  --api-version 2023-03-01-preview
+```
+
+### 9. Create cosmosdb db and container
+
+```bash
+# Create database
+az cosmosdb sql database create \
+  --account-name resume-anaylzerdb \
+  --name ResumeDB \
+  --resource-group ResumeAnalyser-rg
+
+# Create container
+az cosmosdb sql container create \
+  --account-name resume-anaylzerdb \
+  --database-name ResumeDB \
+  --name ResumeContainer \
+  --partition-key-path "/name" \
+  --resource-group ResumeAnalyser-rg
+```
 ---
 
 ## 🌐 API Endpoints
@@ -688,6 +726,9 @@ There are **three major functions** (APIs):
 | `upload_resume`     | HTTP Trigger (POST) | Uploads a resume to Blob Storage                     |
 | `BlobTrigger`       | Blob Trigger        | Processes uploaded resumes and stores extracted data |
 | `GetResumeInsights` | HTTP Trigger (GET)  | Fetches processed insights from Cosmos DB            |
+
+<img width="1902" height="915" alt="image" src="https://github.com/user-attachments/assets/8c0d3164-303b-44b0-a83e-24c33bf87968" />
+
 
 ---
 
