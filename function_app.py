@@ -3,6 +3,7 @@ import logging
 import uuid
 import json
 import datetime
+import time
 import azure.functions as func
 
 from azure.ai.formrecognizer import DocumentAnalysisClient
@@ -87,20 +88,28 @@ def extract_key_phrases(text):
 
 def extract_summary(text):
     try:
+        logging.info("extracting summary.....")
         # Start the summarization job and wait for completion
-        poller = text_client.begin_abstract_summary([text])
-        result = poller.result()  # <-- this waits for completion internally
+        poller = text_client.begin_extract_summary([text])
+        while not poller.done():
+            logging.error("Still summarizing...")
+            time.sleep(1)
+        logging.info("extracting summary.....")
         summary_text = ""
-        # Loop through results
-        for doc in result:
-            if not doc.is_error:
-                for summary in doc.summaries:
-                    summary_text += summary.text.strip() + " "
+        poller = text_client.begin_extract_summary([text])
+        results = poller.result()   # this returns an ItemPaged iterator
+
+        for result in results:
+            if not result.is_error:
+                summary_text = " ".join([sentence.text for sentence in result.sentences])
+                return summary_text
             else:
-                raise Exception(f"Error in summary: {doc.error.code} - {doc.error.message}")
+                logging.error("Error:", result.error)
+                return "Unknown"
+
         return summary_text.strip()
     except Exception as e:
-        print(f"Error in extract_summary: {e}")
+        logging.error(f"Error in extract_summary: {e}")
         return ""
 
 
@@ -143,7 +152,6 @@ def BlobTrigger(myblob: func.InputStream):
     person_name, entities = extract_entities(text_content)
     key_phrases = extract_key_phrases(text_content)
     summary = extract_summary(text_content)
-    logging.info(str(key_phrases))
 
     # Step 3: Store results in Cosmos DB
     store_in_cosmos(person_name, entities, blob_name,key_phrases, summary)
@@ -168,16 +176,20 @@ def GetResumeInsights(req: func.HttpRequest) -> func.HttpResponse:
         container = database.get_container_client(COSMOS_CONTAINER)
 
         # Query for this file
-        query = "SELECT * FROM c WHERE c.fileName=@filename"
+        query = """
+                SELECT TOP 1 * FROM c
+                WHERE c.fileName = @filename
+                ORDER BY c._ts DESC
+                """
         items = list(container.query_items(
             query=query,
             parameters=[{"name": "@filename", "value": filename}],
             enable_cross_partition_query=True
         ))
+
         if not items:
-            return func.HttpResponse(
-                f"No data found for file '{filename}'", status_code=404
-            )
+            return func.HttpResponse(f"No data found for file '{filename}'", status_code=404)
+
         doc = items[0]
         name = doc.get("name", "Unknown")
         summary = doc.get("summary", "Unknown")
