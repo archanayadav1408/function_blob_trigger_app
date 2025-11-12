@@ -74,6 +74,7 @@ az storage account create -n ${PREFIX}storage -g $RG -l $LOC --sku Standard_LRS
 AZ_STORAGE_KEY=$(az storage account keys list -g $RG -n ${PREFIX}storage --query "[0].value" -o tsv)
 az storage container create --name resumes --account-name ${PREFIX}storage --account-key $AZ_STORAGE_KEY
 ```
+<img width="1911" height="963" alt="Screenshot 2025-11-11 195505" src="https://github.com/user-attachments/assets/483f963e-effd-468c-ba31-f7773147715f" />
 
 ### 6️⃣ Create Cognitive Services Account
 
@@ -86,6 +87,8 @@ az cognitiveservices account create \
   --location $LOC \
   --yes
 ```
+<img width="1914" height="928" alt="Screenshot 2025-11-11 195625" src="https://github.com/user-attachments/assets/f06cbd6b-3036-4157-ae2f-35f9a4b28f5a" />
+
 
 ### 7️⃣ Deploy the Function App
 
@@ -100,6 +103,7 @@ az functionapp create \
   --os-type Linux \
   --linux-fx-version "Python|3.12"
 ```
+<img width="1904" height="972" alt="Screenshot 2025-11-11 195705" src="https://github.com/user-attachments/assets/f11cd9ed-22d6-417a-b633-fa7af1789a02" />
 
 ### 8.Deply Cosmosdb account
 ```bash
@@ -134,11 +138,14 @@ az cosmosdb sql database create \
 # Create container
 az cosmosdb sql container create \
   --account-name resume-anaylzerdb \
-  --database-name ResumeDB \
-  --name ResumeContainer \
+  --database-name resumesDB \
+  --name resumesdata \
   --partition-key-path "/name" \
   --resource-group ResumeAnalyser-rg
 ```
+
+<img width="1914" height="930" alt="Screenshot 2025-11-11 195809" src="https://github.com/user-attachments/assets/e967c780-1b2e-4b01-955f-63ac355050b7" />
+
 ---
 
 ## 🌐 API Endpoints
@@ -765,6 +772,7 @@ Once uploaded, the **Blob Trigger** automatically processes the file and extract
 curl -X POST "http://localhost:7071/api/uploadresume" \
   -F "file=@Ashish_Jha_Developer.pdf"
 ```
+<img width="1896" height="788" alt="Screenshot 2025-11-11 200217" src="https://github.com/user-attachments/assets/6394a802-84f5-4efa-be5d-3fbd8b5df66a" />
 
 ### **Response (Success)**
 
@@ -777,6 +785,7 @@ File uploaded successfully!
 ```text
 Error: Invalid file type or upload failure.
 ```
+<img width="1919" height="979" alt="Screenshot 2025-11-11 200740" src="https://github.com/user-attachments/assets/f443d072-1088-457e-9204-8f05e45f15c7" />
 
 ---
 
@@ -823,6 +832,12 @@ Automatically triggers when a new file is uploaded to the container `resumes`.
   "uploadTime": "2025-11-01T17:00:00Z"
 }
 ```
+<img width="1919" height="995" alt="Screenshot 2025-11-11 200626" src="https://github.com/user-attachments/assets/12b6fdb7-5b12-4fb7-88ce-b21415c51e61" />
+
+
+
+<img width="1512" height="958" alt="Screenshot 2025-11-11 201148" src="https://github.com/user-attachments/assets/79667937-cf64-4a47-bb6c-ade212e3050b" />
+
 
 ---
 
@@ -849,6 +864,7 @@ Retrieves the processed insights (summary, entities, skills, etc.) for the given
 ```bash
 curl "http://localhost:7071/api/GetResumeInsights?filename=Ashish_Jha_Developer.pdf"
 ```
+<img width="1912" height="1126" alt="Screenshot 2025-11-11 200458" src="https://github.com/user-attachments/assets/b44fbd70-5cce-4584-8f0a-37e1258a098e" />
 
 ### **Example Response**
 
@@ -870,6 +886,8 @@ curl "http://localhost:7071/api/GetResumeInsights?filename=Ashish_Jha_Developer.
 | 200         | Success — data retrieved      |
 | 404         | Resume not found in Cosmos DB |
 | 400         | Missing filename parameter    |
+
+<img width="1918" height="980" alt="Screenshot 2025-11-11 201048" src="https://github.com/user-attachments/assets/5bc5f6c4-0eab-4c17-8f35-2986d666a84c" />
 
 ---
 
